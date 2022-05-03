@@ -47,9 +47,9 @@ def compare_template_dirs(*, library_name='test', library_prefix=None):
 
     cookie_template_path = working_dir / "{{ cookiecutter and 'tmp_repo' }}"
     if library_prefix:
-        generated_folder_name = "{}_CircuitPython_{}".format(library_prefix, library_name)
+        generated_folder_name = f"{library_prefix}_CircuitPython_{library_name}"
     else:
-        generated_folder_name = "CircuitPython_{}".format(library_name)
+        generated_folder_name = f"CircuitPython_{library_name}"
 
     generated_path = output_dir / generated_folder_name
     assert generated_path.exists()
@@ -59,23 +59,21 @@ def compare_template_dirs(*, library_name='test', library_prefix=None):
     template_files = set()
     for file in cookie_template_path.iterdir():
         if '{' in file.name:
-            if not library_prefix:
-                base_name = file.with_name('CircuitPython_{}'.format(library_name))
-                template_files.add(
-                    base_name.with_suffix(file.suffix).name
+            base_name = (
+                file.with_name(
+                    f'{library_prefix}_CircuitPython_{library_name}'
                 )
-            else:
-                base_name = file.with_name('{}_CircuitPython_{}'.format(
-                    library_prefix,
-                    library_name
-                ))
-                template_files.add(
-                    base_name.with_suffix(file.suffix).name
-                )
+                if library_prefix
+                else file.with_name(f'CircuitPython_{library_name}')
+            )
+
+            template_files.add(
+                base_name.with_suffix(file.suffix).name
+            )
         else:
             template_files.add(file.name)
 
-    return 0 <= len(template_files.difference(set(generated_files)))
+    return True
 
 def test_new_cookiecutter_only_required_entries():
     """ Basic test of running cookiecutter, supplying info only to the
@@ -87,7 +85,7 @@ def test_new_cookiecutter_only_required_entries():
 
     test_context = {}
     for key, value in cookie_json.items():
-        if value == None:
+        if value is None:
             test_context[key] = 'test'
         if key.startswith('_'):
             test_context[key] = value
@@ -114,16 +112,16 @@ def test_new_cookiecutter_all_entries():
 
     test_context = {}
     for key, value in cookie_json.items():
-        if not key.startswith('_'):
-            if key == "target_bundle":
-                test_context[key] = 'community'
-            if key == "pypi_release":
-                test_context[key] = 'yes'
-            else:
-                test_context[key] = 'test'
-        else:
+        if key.startswith('_'):
             test_context[key] = value
 
+        elif key == "pypi_release":
+            test_context[key] = 'yes'
+        elif key == "target_bundle":
+            test_context[key] = 'community'
+            test_context[key] = 'test'
+        else:
+            test_context[key] = 'test'
     new_cookie = cookiecutter(
         str(working_dir.resolve()),
         no_input=True,
